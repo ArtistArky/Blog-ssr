@@ -1,0 +1,1739 @@
+import LayoutPage from "components/LayoutPage/LayoutPage";
+import React, { ComponentType, FC, useState, useEffect } from "react";
+import { Redirect, Route, Switch, useRouteMatch } from "react-router";
+import { NavLink } from "react-router-dom";
+import DashboardBillingAddress from "./DashboardBillingAddress";
+import DashboardEditProfile from "./DashboardEditProfile";
+import DashboardPosts from "./DashboardPosts";
+import DashboardRoot from "./DashboardRoot";
+import DashboardSubcription from "./DashboardSubcription";
+import DashboardSubmitPost from "./DashboardSubmitPost";
+import { Helmet } from "react-helmet";
+import { GoogleLogin, GoogleLogout  } from 'react-google-login';
+import ButtonPrimary from "components/Button/ButtonPrimary";
+import { gapi } from "gapi-script";
+import { GdocsContext } from "utils/gdocscontext"; 
+
+export interface PageDashboardProps {
+  className?: string;
+}
+
+interface DashboardLocationState {
+  "/root"?: {};
+  "/posts"?: {};
+  "/edit-profile"?: {};
+  "/subscription"?: {};
+  "/billing-address"?: {};
+  "/submit-post"?: {};
+  "/account"?: {};
+}
+
+interface DashboardPage {
+  sPath: keyof DashboardLocationState;
+  exact?: boolean;
+  component: ComponentType<Object>;
+  emoij: string;
+  pageName: string;
+}
+
+const subPages: DashboardPage[] = [
+  {
+    sPath: "/root",
+    exact: true,
+    component: DashboardRoot,
+    emoij: "🕹",
+    pageName: "Dashboard",
+  },
+  {
+    sPath: "/posts",
+    component: DashboardPosts,
+    emoij: "📕",
+    pageName: "Posts",
+  },
+  {
+    sPath: "/edit-profile",
+    component: DashboardEditProfile,
+    emoij: "🛠",
+    pageName: "Edit profile",
+  },
+  {
+    sPath: "/subscription",
+    component: DashboardSubcription,
+    emoij: "📃",
+    pageName: "Subscription",
+  },
+  {
+    sPath: "/billing-address",
+    component: DashboardBillingAddress,
+    emoij: "✈",
+    pageName: "Billing address",
+  },
+  {
+    sPath: "/submit-post",
+    component: DashboardSubmitPost,
+    emoij: "✍",
+    pageName: "Create a post",
+  },
+];
+
+const PageDashboard: FC<PageDashboardProps> = ({ className = "" }) => {
+  let { path, url } = useRouteMatch();
+  //"You have created a new client application that uses libraries for user authentication or authorization that will soon be deprecated. New clients must use the new libraries instead; existing clients must also migrate before these libraries are deprecated. See the [Migration Guide](https://developers.google.com/identity/gsi/web/guides/gis-migration) for more information."
+  useEffect(() => {
+    function start() {
+      gapi.client.init({
+        clientId: import.meta.env.VITE_GAUTHDOCS_CLIENTID,
+        scope: 'https://www.googleapis.com/auth/drive.file',
+      });
+    }
+
+    gapi.load('client:auth2', start);
+  }, []);
+
+  const [btntxt, setbtntxt] = useState("Connect your Google Docs Account");
+  const [user, setUser] = useState();
+  
+  var usrdata:any = '';
+
+  const responseGoogle = (response: any) => {
+    usrdata = response;
+    console.log(usrdata);
+    setUser(usrdata);
+    setbtntxt("Reconnect your Google Docs Account");
+  }
+  const responseGoogle2 = (response: any) => {
+    console.log(response);
+    setbtntxt("Reconnect your Google Docs Account");
+  }
+
+  return (
+    <div className={`nc-PageDashboard ${className}`} data-nc-id="PageDashboard">
+      <Helmet>
+        <title>Dashboard || Blog Magazine React Template</title>
+      </Helmet>
+      <LayoutPage
+        subHeading="View your dashboard, manage your Posts, Subscription, edit password and profile"
+        headingEmoji="⚙"
+        heading="Dashboard"
+      >
+          <div className="items-center text-center">
+            <GoogleLogin
+              clientId={import.meta.env.VITE_GAUTHDOCS_CLIENTID}
+              render={renderProps => (
+                
+                <ButtonPrimary onClick={renderProps.onClick} disabled={renderProps.disabled} className="md:col-span-2 mb-20" type="submit">
+                  {btntxt}
+                </ButtonPrimary>
+              )}
+              onSuccess={responseGoogle}
+              onFailure={responseGoogle2}
+              cookiePolicy={'single_host_origin'}
+              isSignedIn={true}
+            />
+          </div>
+          <GdocsContext.Provider value={{ user, setUser }}>
+            <div className="flex flex-col space-y-8 xl:space-y-0 xl:flex-row">
+              {/* SIDEBAR */}
+              <div className="flex-shrink-0 max-w-xl xl:w-80 xl:pr-8">
+                <ul className="text-base space-y-1 text-neutral-6000 dark:text-neutral-400">
+                  {subPages.map(({ sPath, pageName, emoij }, index) => {
+                    return (
+                      <li key={index}>
+                        <NavLink
+                          className="flex px-6 py-2.5 font-medium rounded-lg hover:text-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-800 dark:hover:text-neutral-100"
+                          to={`${url}${sPath}`}
+                          activeClassName="bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100"
+                        >
+                          <span className="w-8 mr-1">{emoij}</span>
+                          {pageName}
+                        </NavLink>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+              <div className="border border-neutral-100 dark:border-neutral-800 md:hidden"></div>
+              <div className="flex-grow">
+                <Switch>
+                  {subPages.map(({ component, sPath, exact }, index) => {
+                    return (
+                      <Route
+                        key={index}
+                        exact={exact}
+                        component={component}
+                        path={!!sPath ? `${path}${sPath}` : path}
+                      />
+                    );
+                  })}
+                  <Redirect to={path + "/root"} />
+                </Switch>
+              </div>
+            </div>
+          </GdocsContext.Provider>
+      </LayoutPage>
+    </div>
+  );
+};
+
+export default PageDashboard;
+
+
+
+//import express from 'express';
+
+var { createClient } = require('@supabase/supabase-js');
+var { decode } = require('base64-arraybuffer');
+var {google} = require('googleapis');
+var fs = require('fs');
+var mammoth = require("mammoth");
+var express = require('express');
+
+// Create a single supabase client for interacting with your database
+const supabase = createClient('https://vwporhpsnujzncbdxtaj.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ3cG9yaHBzbnVqem5jYmR4dGFqIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTY2MDIxNzI5NSwiZXhwIjoxOTc1NzkzMjk1fQ.f-VMEowcO6Mncg_sAsq5v4Pnb2ytN58VoukpG1931fs');
+
+//1zmZpRnHZOGYBXWiZ8Lw99oHePNF4BZPxRjjPBLUzFVc
+//1FVbkaybntDQBcNMk6e_kJZGfxe_TrjIt
+//ya29.A0AVA9y1trkldFMNiHgPi8MrAbq0RfAoq4rrQqGvKLyJtCk7FmwtkCryKIRvaHKwZF-Z8NgZPv9FfudZQbsoYAqNDwgHjQBY50uWaiSIG-uirqbtjwxpRnwFXRGBawzstIZRgICGaieJ7y-Y2vtV2vF62aIimWaCgYKATASATASFQE65dr8kQEX8gaRYvKZh0E8d35-5g0163
+
+// variables
+
+// async function uploadImg(imgname, imgdata, contentType) {
+//     const imgext = contentType.replace("image/", "");
+//     const imagepath = 'public/'+titletest+'/'+imgname+'.'+imgext;
+//     const { data, error } = await supabase.storage
+//     .from('posts')
+//     .upload(imagepath, decode(imgdata), {
+//         contentType: contentType,
+//     });
+//     if(error) {
+//         console.log(error);
+//     }
+//     if(data) {
+//         const { publicURL, error } = await supabase.storage
+//         .from('posts')
+//         .getPublicUrl(imagepath);
+//         if(error) {
+//             console.log(error);
+//         }
+//         if(publicURL) {
+//             //console.log(publicURL);
+//             return publicURL;
+//         }
+//     }
+// }
+//email profile https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.email openid
+async function getdata() {
+        var fileId = '127zNmT3JXmgkoE0SgQ2RMsanQkCzRlzKqH9Aoa-qNG8',
+            accessToken = 'ya29.a0AVA9y1t0jEQ16pp-smoADTXwcYEW-l9IRJjOkWmV4afsF2YV8dWH3f3_AthrRTjoJ32sv3mOMPHBll5Gpw240Zoe0pzbgUvULv43Xc0vlbbx61QYJ7KPqqgpiSObTg2BQbKhipxcnY21xbRF01tLdUtOgB-HHQaCgYKATASATASFQE65dr8hEG8ckHp_aTJTUlk5gvV5A0165';
+
+        // oauth setup
+        var OAuth2 = google.auth.OAuth2,
+            OAuth2Client = new OAuth2();
+
+        // set oauth credentials
+        OAuth2Client.setCredentials({access_token: accessToken});
+
+        // google drive setup
+        var drive = google.drive({version: 'v3', auth: OAuth2Client});
+
+        var i = 0;
+        
+        
+        const url = '';
+
+        console.log("Started");
+
+        var options = {
+            styleMap: [
+                "p[style-name='Heading 1'] => h2:fresh",
+            ],
+            convertImage: mammoth.images.imgElement(function(image) {
+                i++;
+                const contentType = image.contentType;
+                return image.read("base64").then(async function(imageBuffer) {
+                    const imgext = contentType.replace("image/", "");
+                    var titletest = "this-is-a-test-title-3";
+                    const imagepath = 'public/'+titletest+'/'+i+'.'+imgext;
+                    const { data, error } = await supabase.storage
+                    .from('posts')
+                    .upload(imagepath, decode(imageBuffer), {
+                        contentType: contentType,
+                    });
+                    if(error) {
+                        console.log(error);
+                    }
+                    if(data) {
+                        const { publicURL } = await supabase.storage
+                        .from('posts')
+                        .getPublicUrl(imagepath);
+                        if(error) {
+                            console.log(error);
+                        }
+                        console.log(publicURL);
+                        return {
+                            src: publicURL.toString(),
+                            alt: 'Test',
+                        };
+                        // if(publicURL) { 
+                        //     url = publicURL;
+                        //     console.log(publicURL);
+
+                        // }
+                    }
+                    //const url = uploadImg(i, imageBuffer, contentType);      
+                    //url.then(function(url) { 
+                        
+                    //});
+                });
+            })
+        }
+        // download file as text/html
+        var buffers = [];
+        console.log("Started 2");
+        try {
+            const result = await drive.files.export(
+                {
+                fileId: fileId,
+                mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+                },
+            {responseType: 'arraybuffer'});
+            console.log(result.status);
+            buffers.push(Buffer.from(result.data));
+            console.log(buffers);
+            var buffer = Buffer.concat(buffers);
+            var html;
+            mammoth.convertToHtml({buffer: buffer}, options)
+            .then(function(result){
+                html = result.value; // The generated HTML
+                var messages = result.messages; // Any messages, such as warnings during conversion
+                console.log(messages);
+                var editedHtml = html.replace(/<img /g, "<img style={{borderRadius: 20}} ");
+                fs.writeFile('binary2.html', editedHtml, function(err){
+                    if(err)
+                    {
+                        console.log(err);
+                
+                    }
+                    else
+                    {
+                    console.log("Success");
+                    }
+                });
+            })
+            .done();
+        }catch(err){ 
+            console.log(err);
+        }
+        // fs.writeFile('binary5.docx', result.data, function(err){
+        //     if(err)
+        //     {
+        //         console.log(err);
+        
+        //     }
+        //     else
+        //     {
+        //         console.log("Success");
+        //     }
+        // });
+
+}
+getdata();
+// .on('error', function(err) {
+//         // handle error
+// }).on('data', function(data) {
+//         buffers.push(data); // data is a buffer
+// }).on('end', function() {
+//         var buffer = Buffer.concat(buffers),
+//             googleDocAsHtml = buffer.toString();
+//             console.log(googleDocAsHtml);
+// });
+
+
+
+
+
+// var mammoth = require("mammoth");
+// var fs = require('fs');
+
+// var html;
+// mammoth.convertToHtml({path: "./Letter.docx"})
+// .then(function(result){
+//     html = result.value; // The generated HTML
+//     var messages = result.messages; // Any messages, such as warnings during conversion
+//     fs.writeFile('binary5.html', html, function(err){
+//         if(err)
+//         {
+//             console.log(err);
+    
+//         }
+//         else
+//         {
+//            console.log("Success");
+//         }
+//     });
+// })
+// .done();
+
+// const app = express();
+// const port = 3000;
+
+// app.get('/', function(req, res, next){
+//     res.send("Started");
+// });
+
+// app.listen(port, () => console.log(`server started on port ${port}`));
+
+// export default app;
+
+
+begin
+  UPDATE public.authors
+  SET posts = posts + 1
+  WHERE email = new.email
+end;
+
+
+
+import React, { FC, ReactNode, useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
+import { PostDataType, TaxonomyType } from "data/types";
+import NcImage from "components/NcImage/NcImage";
+import { SINGLE } from "data/single";
+import SingleContent from "./SingleContent";
+import { CommentType } from "components/CommentCard/CommentCard";
+import { useAppDispatch } from "app/hooks";
+import { changeCurrentPage } from "app/pages/pages";
+import { Sidebar } from "./Sidebar";
+import SingleRelatedPosts from "./SingleRelatedPosts";
+import SingleHeader from "./SingleHeader";
+import SingleHeader4 from "./SingleHeader4";
+import supabaseClient from "utils/supabaseClient";
+
+export interface PageSingleTemp4SidebarProps {
+  className?: string;
+}
+
+export interface SinglePageType extends PostDataType {
+  tags: TaxonomyType[];
+  content: string | ReactNode;
+  comments: CommentType[];
+}
+
+const PageSingleTemp4Sidebar: FC<PageSingleTemp4SidebarProps> = ({
+  className = "",
+}) => {
+  // DEMO DATA
+  const dispatch = useAppDispatch();
+
+  const { authorslug, postslug } = useParams<any>();
+
+  const [loading, setLoading] = useState(true);
+  const [post, setPost] = useState<any>();
+
+  // UPDATE CURRENTPAGE DATA IN PAGEREDUCERS
+  useEffect(() => {
+    dispatch(changeCurrentPage({ type: "/single/:slug", data: SINGLE }));
+    return () => {
+      dispatch(changeCurrentPage({ type: "/", data: {} }));
+    };
+  }, []);
+
+  useEffect(() => {
+    console.log(authorslug);
+    console.log(postslug);
+
+    const fetchPost = async() => {
+      const { data, error } = await supabaseClient
+        .from('posts')
+        .select("*")
+        .eq('posttitle', postslug)
+        .eq('postedby', authorslug)
+
+        if(error) {
+          console.log(error);
+        }
+
+        if(data) {
+          setPost(data);
+          console.log(data);
+          setLoading(false);
+        }
+    }
+    fetchPost();
+  }, []);
+
+  if(loading) {
+    return (
+      <>
+        <div
+          className={`nc-PageSingleTemp4Sidebar relative text-center pt-10 lg:pt-16 ${className}`}
+          data-nc-id="PageSingleTemp4Sidebar"
+        >
+          {/*  */}
+          
+          <div className="container relative py-16 lg:py-20">
+            {/* HEADER */}
+            <header className="text-center max-w-2xl mx-auto space-y-7">
+              <h2 className="text-7xl md:text-8xl"></h2>
+              <h1 className="text-6xl md:text-6xl font-semibold tracking-widest">
+                LOADING....
+              </h1>
+              <span className="block text-sm text-neutral-800 sm:text-base dark:text-neutral-200 tracking-wider font-medium">
+              </span>
+            </header>
+          </div>
+        </div>
+      </>
+    );
+  }else {
+    
+    return (
+      <>
+        <div
+          className={`nc-PageSingleTemp4Sidebar relative pt-10 lg:pt-16 ${className}`}
+          data-nc-id="PageSingleTemp4Sidebar"
+        >
+          {/*  */}
+          <div className="absolute top-0 inset-x-0 bg-neutral-900 dark:bg-black/30 h-[480px] md:h-[600px] lg:h-[700px] xl:h-[95vh]"></div>
+
+          <div className="relative">
+            {/* SINGLE HEADER */}
+            <header className="container rounded-xl ">
+              <SingleHeader4 pageData={SINGLE} />
+            </header>
+
+            {/* SINGLE MAIN CONTENT */}
+            <div className="container flex flex-col my-10 lg:flex-row ">
+              <div className="w-full lg:w-3/5 xl:w-2/3 xl:pr-20">
+                <SingleContent data={post[0].post} />
+              </div>
+              <div className="w-full mt-12 lg:mt-0 lg:w-2/5 lg:pl-10 xl:pl-0 xl:w-1/3">
+                <Sidebar />
+              </div>
+            </div>
+
+            {/* RELATED POSTS */}
+            <SingleRelatedPosts />
+          </div>
+        </div>
+      </>
+    );
+    
+  }
+};
+
+export default PageSingleTemp4Sidebar;
+
+
+import React, { FC, useEffect, useRef } from "react";
+import Tag from "components/Tag/Tag";
+import { SinglePageType } from "./PageSingle";
+import SingleAuthor from "./SingleAuthor";
+import SingleCommentForm from "./SingleCommentForm";
+import SingleCommentLists from "./SingleCommentLists";
+import SingleContentDemo from "./SingleContentDemo";
+import { useLocation } from "react-router";
+
+export interface SingleContentProps {
+  data: SinglePageType;
+}
+
+const SingleContent: FC<SingleContentProps> = ({ data }) => {
+  //const { tags, author, commentCount, comments } = data;
+  const commentRef = useRef<HTMLDivElement>(null);
+  //
+  const location = useLocation();
+
+  useEffect(() => {
+    console.log(data);
+    //  SCROLL TO COMMENT AREA
+    if (location.hash !== "#comment") {
+      return;
+    }
+    //
+    if (location.hash === "#comment") {
+      setTimeout(() => {
+        if (commentRef.current) {
+          commentRef.current.scrollIntoView();
+        }
+      }, 500);
+    }
+  }, [location]);
+
+  return (
+    <div className="nc-SingleContent space-y-10">
+      {/* ENTRY CONTENT */}
+      <div
+        id="single-entry-content"
+        className="prose lg:prose-lg !max-w-screen-md mx-auto dark:prose-invert"
+      >
+        {/* THIS IS THE DEMP CONTENT */}
+        {/* IF YOUR DATA IS JSON, YOU CAN USE render with html-react-parser (https://www.npmjs.com/package/html-react-parser) */}
+        <SingleContentDemo data={data} />
+      </div>
+
+      {/* TAGS */}
+      {/* <div className="max-w-screen-md mx-auto flex flex-wrap">
+        {tags.map((item) => (
+          <Tag hideCount key={item.id} tag={item} className="mr-2 mb-2" />
+        ))}
+      </div> */}
+
+      {/* AUTHOR */}
+      {/* <div className="max-w-screen-md mx-auto border-b border-t border-neutral-100 dark:border-neutral-700"></div>
+      <div className="max-w-screen-md mx-auto ">
+        <SingleAuthor author={author} />
+      </div> */}
+
+      {/* COMMENT FORM */}
+      {/* <div
+        id="comment"
+        ref={commentRef}
+        className="max-w-screen-md mx-auto pt-5"
+      >
+        <h3 className="text-xl font-semibold text-neutral-800 dark:text-neutral-200">
+          Responses ({commentCount})
+        </h3>
+        <SingleCommentForm
+          onClickSubmit={(id) => console.log(id)}
+          onClickCancel={(id) => console.log(id)}
+        />
+      </div> */}
+
+      {/* COMMENTS LIST */}
+      {/* <div className="max-w-screen-md mx-auto">
+        <SingleCommentLists comments={comments} />
+      </div> */}
+    </div>
+  );
+};
+
+export default SingleContent;
+
+
+import React, { FC, ReactNode, useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
+import { PostDataType, TaxonomyType } from "data/types";
+import NcImage from "components/NcImage/NcImage";
+import { SINGLE } from "data/single";
+import SingleContent from "./SingleContent";
+import { CommentType } from "components/CommentCard/CommentCard";
+import { useAppDispatch } from "app/hooks";
+import { changeCurrentPage } from "app/pages/pages";
+import SingleHeader from "./SingleHeader";
+import SingleRelatedPosts from "./SingleRelatedPosts";
+import supabaseClient from "utils/supabaseClient";
+
+export interface PageSingleProps {
+  className?: string;
+}
+
+export interface SinglePageType extends PostDataType {
+  tags: TaxonomyType[];
+  content: string | ReactNode;
+  comments: CommentType[];
+}
+
+const PageSingle: FC<PageSingleProps> = ({ className = "" }) => {
+  const dispatch = useAppDispatch();
+
+  const { authorslug, postslug } = useParams<any>();
+
+  const [loading, setLoading] = useState(true);
+  const [post, setPost] = useState<any>();
+
+  useEffect(() => {
+    console.log(authorslug);
+    console.log(postslug);
+
+    const fetchPost = async() => {
+      const { data, error } = await supabaseClient
+        .from('posts')
+        .select(`*, authors(*)`)
+        .eq('posttitle', postslug)
+        .eq('postedby', authorslug)
+
+        if(error) {
+          console.log(error);
+        }
+
+        if(data) {
+          setPost(data);
+          console.log(data);
+          setLoading(false);
+        }
+    }
+    fetchPost();
+  }, []);
+
+  useEffect(() => {
+    // UPDATE CURRENTPAGE DATA IN PAGE-REDUCERS
+    dispatch(changeCurrentPage({ type: "/single/:slug", data: SINGLE }));
+
+    return () => {
+      dispatch(changeCurrentPage({ type: "/", data: {} }));
+    };
+  }, []);
+
+  if(loading) {
+
+    return (
+      <>
+        <div
+          className={`nc-PageSingleTemp4Sidebar relative text-center pt-10 lg:pt-16 ${className}`}
+          data-nc-id="PageSingleTemp4Sidebar"
+        >
+          {/*  */}
+          
+          <div className="container relative py-16 lg:py-20">
+            {/* HEADER */}
+            <header className="text-center max-w-2xl mx-auto space-y-7">
+              <h2 className="text-7xl md:text-8xl"></h2>
+              <h1 className="text-6xl md:text-6xl font-semibold tracking-widest">
+                LOADING....
+              </h1>
+              <span className="block text-sm text-neutral-800 sm:text-base dark:text-neutral-200 tracking-wider font-medium">
+              </span>
+            </header>
+          </div>
+        </div>
+      </>
+    );
+
+  }else if(!post[0]) {
+
+    return (
+      <>
+        <div
+          className={`nc-PageSingleTemp4Sidebar relative text-center pt-10 lg:pt-16 ${className}`}
+          data-nc-id="PageSingleTemp4Sidebar"
+        >
+          {/*  */}
+          
+          <div className="container relative py-16 lg:py-20">
+            {/* HEADER */}
+            <header className="text-center max-w-2xl mx-auto space-y-7">
+              <h2 className="text-7xl md:text-8xl">🪔</h2>
+              <h1 className="text-8xl md:text-9xl font-semibold tracking-widest">
+                404
+              </h1>
+              <span className="block text-sm text-neutral-800 sm:text-base dark:text-neutral-200 tracking-wider font-medium">
+                THE PAGE YOU WERE LOOKING FOR DOESN'T EXIST.{" "}
+              </span>
+            </header>
+          </div>
+        </div>
+      </>
+    );
+
+  }else { 
+
+    return (
+      <>
+        <div
+          className={`nc-PageSingle pt-8 lg:pt-16 ${className}`}
+          data-nc-id="PageSingle"
+        >
+          {/* SINGLE HEADER */}
+          <header className="container rounded-xl">
+            <div className="max-w-screen-md mx-auto">
+              <SingleHeader pageData={post[0]} />
+            </div>
+          </header>
+  
+          {/* FEATURED IMAGE */}
+          <NcImage
+            containerClassName="container my-10 sm:my-12"
+            className="object-cover w-full h-full rounded-xl"
+            src={post[0].featured_imghd}
+          />
+  
+          {/* SINGLE MAIN CONTENT */}
+          <div className="container">
+            <SingleContent data={post[0].post} />
+          </div>
+  
+          {/* RELATED POSTS */}
+          {/* <SingleRelatedPosts /> */}
+        </div>
+      </>
+    );
+
+  }
+};
+
+export default PageSingle;
+
+
+try {
+          Resizer.imageFileResizer(
+            e.target.files[0],
+            1024,
+            768,
+            "JPEG",
+            100,
+            0,
+            (uri) => {
+              console.log(uri);
+              setfihighRes(uri);
+              try {
+                Resizer.imageFileResizer(
+                  e.target.files[0],
+                  320,
+                  240,
+                  "JPEG",
+                  100,
+                  0,
+                  (uri) => {
+                    console.log(uri);
+                    setfilowRes(uri);
+                    setbtnDisabled(false);
+                    alertMsg("Featured Image conversion complete. You can now proceed to submit the post", "success");
+                  },
+                  "file",
+                  200,
+                  200
+                );
+              } catch (err) {
+                console.log(err);
+                alertMsg("There was an error converting your featured image. Please select your featured image & try again", "error");
+              }
+            },
+            "file",
+            200,
+            200
+          );
+        } catch (err) {
+          console.log(err);
+          alertMsg("There was an error converting your featured image. Please select your featured image & try again", "error");
+        }
+
+
+
+
+        
+  const uploadImages = async () => {
+    if(fileArray.length > 0) {
+
+      for(var i = 0 ; i < fileArray.length; i++) {
+        
+        const name = fileArray[i].name;
+        const imagepath = 'public/'+authId+'/'+name;
+  
+        const { data, error } = await supabaseClient.storage
+        .from('authors')
+        .upload(imagepath, fileArray[i], {
+          upsert: true,
+        });
+        if(error) throw alertMsg(error.message, "error");
+        if(data) {
+          const { publicURL, error } = await supabaseClient.storage
+          .from('authors')
+          .getPublicUrl(imagepath);
+          if(error) throw alertMsg(error.message, "error");
+          if(publicURL) {
+            console.log(publicURL);
+            (name == 'logo.png') ? setlogoImg(publicURL) : setfaviconImg(publicURL);
+          }
+          //setbtnLoading(false);
+        }
+      }
+      return true;
+
+    }else {
+      return true;
+    }
+  }
+
+
+//PageCategory.ts
+import React, {useState, useEffect, useRef} from "react";
+import NcImage from "components/NcImage/NcImage";
+import PostPagination from "components/Pagination/PostPagination";
+import { Link } from "react-router-dom";
+import supabaseClient from "utils/supabaseClient";
+import ButtonThird from "components/Button/ButtonThird";
+import { useGDocsContext } from 'utils/gdocscontext';
+import Snackbar from '@mui/material/Snackbar';
+import ButtonPrimary from "components/Button/ButtonPrimary";
+import Dialog from '@mui/material/Dialog';
+import Input from "components/Input/Input";
+import Label from "components/Label/Label";
+import Collapse from '@mui/material/Collapse';
+import {Alert} from "components/Alert/Alert";
+import Compress from "browser-image-compression";
+import checkDetails from "utils/checkDetails";
+
+const DashboardCategories = () => {
+  const [loading, setLoading] = useState(true);
+  const [loadingtxt, setloadingtxt] = useState<any>("Loading...");
+  const [showAlert, setshowAlert] = useState(false);
+  const [errortxt, setErrortxt] = useState("");
+  const [alertType, setalertType] = useState("");
+  const [dialogOpen, setdialogOpen] = useState(false);
+  const [btnLoading, setbtnLoading] = useState(false);
+  const [btnDisabled, setbtnDisabled] = useState(false);
+  const [category, setCategory] = useState<any>([]);
+  const [posts, setPosts] = useState<any>();
+  const [currentPage, setcurrentPage] = useState<any>(1);
+  const [authorDetails, setauthorDetails] = useState<any>();
+  const [postsperPage, setpostsperPage] = useState<any>(5);
+  const [snackMsg, setsnackMsg] = useState<any>("");
+  const [snackDuration, setsnackDuration] = useState<any>();
+  const [snackStatus, setsnackStatus] = useState<any>(false);
+  const [syncDisabled, setsyncDisabled] = useState<any>(false);
+  const [fiName, setfiName] = useState<any>("No file");
+
+  const name = useRef<any>("");
+  const [fi, setFi] = useState<any>();
+  const [fihighRes, setfihighRes] = useState<any>();
+  const [filowRes, setfilowRes] = useState<any>();
+
+  const authUser = supabaseClient.auth.user();
+  const authId = authUser?.id;
+
+  useEffect(() => {
+
+    const fetchPost = async() => {
+      const { data, error } = await supabaseClient
+        .from('category')
+        .select(`*, authors(*)`)
+        .eq('createdby', authId)
+
+        if(error) {
+          console.log(error);
+        }
+
+        if(data?.length == 0) {
+          setloadingtxt("No Categories");
+        }else if(data) {
+          setCategory(data);
+          console.log(data);
+          setauthorDetails(data[0].authors);
+          setLoading(false);
+        }
+    }
+    fetchPost();
+  }, []);
+
+  const alertMsg = (val: string, errtype: string) => {
+    setErrortxt(val);
+    setalertType(errtype);
+    setshowAlert(true);
+    setbtnLoading(false);
+    setbtnDisabled(false);
+  }
+
+  const getFile = (e: any) => {
+    if (e.target.files.length > 0) {
+      
+      if (["image/jpeg", "image/png"].indexOf(e.target.files[0].type) > -1) {
+        setbtnDisabled(true);
+        alertMsg("Featured Image conversion is under progress. Please wait before you save the category", "warning");
+        const file = e.target.files[0];
+        const filehdName = 'hd.jpeg';
+        const filesdName = 'sd.jpeg';
+        const filetype = 'image/jpeg';
+        const highresOptions = {
+          maxSizeMB: 1,
+          maxWidthOrHeight: 1024,
+          fileType: filetype,
+        }
+        const lowresOptions = {
+          maxSizeMB: 1,
+          maxWidthOrHeight: 320,
+          fileType: filetype,
+        }
+        Compress(file, highresOptions)
+        .then(compressedBlob => {
+            const convertedBlobFile = new File([compressedBlob], filehdName, { type: filetype, lastModified: Date.now()})
+            setfihighRes(convertedBlobFile);
+            console.log(convertedBlobFile);
+            Compress(file, lowresOptions)
+            .then(compressedBlob => {
+                const convertedBlobFile = new File([compressedBlob], filesdName, { type: filetype, lastModified: Date.now()})
+                setfilowRes(convertedBlobFile);
+                console.log(convertedBlobFile);
+                setbtnDisabled(false);
+                alertMsg("Featured Image conversion complete. You can now proceed to submit the post", "success");
+            })
+            .catch(e => {
+              console.log(e);
+            })
+
+        })
+        .catch(e => {
+          console.log(e);
+        })
+        setFi(e.target.files[0]);
+        setfiName(e.target.files[0].name);
+      }else {
+        alertMsg("The selected file type is not allowed", "error");
+      }
+    }
+  }
+
+  const handleClose = (e:any) => {
+    e.preventDefault();
+    setdialogOpen(false);
+  };
+
+  var fihd:any, 
+      fisd:any;
+
+  const uploadFi = async (categoryTitle:any) => {
+    const images = [fihighRes, filowRes];
+    const imagesName = ['hd.jpeg','sd.jpeg'];
+    alertMsg("Uploading featured image. This may take a while. Please make sure you have stable internet connection", "warning");
+    setbtnDisabled(true);
+    setbtnLoading(true);
+
+    for(var i = 0 ; i <= 1; i++) {
+      
+      const imagepath = 'public/'+categoryTitle+'/featuredImg/'+ imagesName[i];
+
+      const { data, error } = await supabaseClient.storage
+      .from('category')
+      .upload(imagepath, images[i], {
+        upsert: true,
+      });
+      if(error) throw alertMsg(error.message, "error");
+      if(data) {
+        const { publicURL, error } = await supabaseClient.storage
+        .from('category')
+        .getPublicUrl(imagepath);
+        if(error) throw alertMsg(error.message, "error");
+        if(publicURL) {
+          console.log(publicURL);
+          const mainurl = publicURL + '?' + new Date().getTime();
+          if(i == 0) { fihd = mainurl } else { fisd = mainurl; }
+        }
+        //setbtnLoading(false);
+      }
+    }
+    return true;
+  }
+
+  const saveCategory = async (e: any) => {
+    e.preventDefault();
+    const nameReg = /^([a-zA-Z0-9 ]){3,20}$/;
+    const cName = name.current.value;
+    if(cName == "" || fihighRes == undefined || filowRes == undefined) {
+      alertMsg("All fields are required", "error");
+    }else if(!cName.match(nameReg)) {
+      alertMsg("Name entered is invalid", "error");
+    }else {
+      setshowAlert(false);
+      setErrortxt("");
+      setbtnDisabled(true);
+      setbtnLoading(true);
+
+      var categoryTitle = cName.replace(/ /g, "-").toLowerCase();
+
+      checkDetails(categoryTitle, "title", "title", "category").then(async (res) => { 
+        if(res.title == categoryTitle){
+          alertMsg("Name already exists. Choose a different name", "error");
+        }else if(res.code && res.code == "PGRST116") { 
+          uploadFi(categoryTitle).then(async () => { 
+            console.log(fihd);
+            console.log(fisd);
+            alertMsg("Featured Image uploaded. Conversion of Google Docs file id to blog post is under progress...", "success");
+            setbtnLoading(true);
+            setbtnDisabled(true);
+            const categoryUrl = '/category/'+categoryTitle;
+            const { data, error } = await supabaseClient.from('category').insert(
+              [
+                { title: categoryTitle, name: cName, featured_imghd: fihd, featured_imgsd: fisd, createdby: authId, href: categoryUrl },
+              ],
+              { upsert: true }
+            );
+            if(error) throw alertMsg(error.message, "error");
+            if(data) {
+              console.log(data);
+              setCategory([...category, data[0]]);
+              alertMsg("Category created successfully", "success");
+              setErrortxt("");
+              setshowAlert(false);
+              setdialogOpen(false);
+            }
+    
+          })
+
+        }
+      });
+      
+
+    }
+
+  }
+
+  if(loading) {
+
+    return (
+      <>
+        <div
+          className={`nc-PageSingleTemp4Sidebar relative text-center pt-10 lg:pt-16`}
+          data-nc-id="PageSingleTemp4Sidebar"
+        >
+          {/*  */}
+          
+          <div className="container relative py-16 lg:py-20">
+            {/* HEADER */}
+            <header className="text-center max-w-2xl mx-auto space-y-7">
+              <h2 className="text-7xl md:text-8xl"></h2>
+              <h2 className="text-4xl md:text-4xl font-semibold tracking-widest">
+                {loadingtxt}
+              </h2>
+              <span className="block text-sm text-neutral-800 sm:text-base dark:text-neutral-200 tracking-wider font-medium">
+              </span>
+            </header>
+          </div>
+        </div>
+      </>
+    );
+
+  }else {
+    const lastIndex = currentPage * postsperPage;
+    const firstIndex = lastIndex - postsperPage;
+    const currentCategories = category.slice(firstIndex, lastIndex);
+
+    return (
+      <div className="flex flex-col space-y-8">
+        <div className="-my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
+          <div className="py-2 align-middle inline-block min-w-full px-1 sm:px-6 lg:px-8">
+            <Dialog open={dialogOpen} className="justify-center items-center">
+                <div className="justify-center items-center rounded-xl md:border md:border-neutral-100 dark:border-neutral-800 pl-10 pr-10 pt-8">
+                    <form className="grid md:grid-cols-2 gap-8 justify-center items-center">
+
+                        <Collapse className="md:col-span-12" in={showAlert}>
+                          <Alert containerClassName="block" type={alertType} children={errortxt} onClick={(e: any) => {
+                            e.preventDefault();
+                            setshowAlert(false)
+                            }}/>
+                        </Collapse>
+                        <label className="block md:col-span-12">
+                          <Label>Category Name</Label>
+
+                          <Input type="text" ref={name} placeholder="Name" className="mt-1" />
+                        </label>
+                        <div className="block md:col-span-12">
+                          <Label>Featured Image</Label>
+
+                          <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-neutral-300 dark:border-neutral-700 border-dashed rounded-md">
+                            <div className="space-y-1 text-center">
+                              <svg
+                                className="mx-auto h-12 w-12 text-neutral-400"
+                                stroke="currentColor"
+                                fill="none"
+                                viewBox="0 0 48 48"
+                                aria-hidden="true"
+                              >
+                                <path
+                                  d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
+                                  strokeWidth="2"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                ></path>
+                              </svg>
+                              <div className="flex flex-col sm:flex-row text-sm text-neutral-6000">
+                                <label
+                                  htmlFor="file-upload"
+                                  className="relative cursor-pointer rounded-md font-medium text-primary-6000 hover:text-primary-800 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-primary-500"
+                                >
+                                  <span>Upload a file</span>
+                                  <input
+                                    id="file-upload"
+                                    name="file-upload"
+                                    type="file"
+                                    accept=".jpg,.jpeg,.png"
+                                    className="sr-only"
+                                    onChange={getFile}
+                                  />
+                                </label>
+                                <p className="pl-1">{fiName} Selected</p>
+                              </div>
+                              <p className="text-xs text-neutral-500">
+                                PNG, JPG, GIF up to 2MB
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                        <ButtonPrimary loading={btnLoading} disabled={btnDisabled}  onClick={(e:any) => saveCategory(e)} sizeClass="px-4 py-2 sm:px-5 mb-5">
+                            Save
+                        </ButtonPrimary>
+                        <ButtonThird onClick={handleClose} sizeClass="px-4 py-2 sm:px-5 mb-5">
+                            Close
+                        </ButtonThird>
+                    </form>
+                </div> 
+            </Dialog>
+            <div className="shadow dark:border dark:border-neutral-800 overflow-hidden sm:rounded-lg">
+              <ButtonPrimary onClick={(e) => {e.preventDefault(); setdialogOpen(true);}} sizeClass="px-4 py-2 sm:px-5 mb-5 mt-5 mr-3 float-right">
+                + &nbsp; Create New Category
+              </ButtonPrimary>
+              <table className="min-w-full divide-y divide-neutral-200 dark:divide-neutral-800">
+                <thead className="bg-neutral-50 dark:bg-neutral-800">
+                  <tr className="text-left text-xs font-medium text-neutral-500 dark:text-neutral-300 uppercase tracking-wider">
+                    <th scope="col" className="px-6 py-3">
+                      Categories
+                    </th>
+                    <th scope="col" className="px-6 py-3">
+                      Date
+                    </th>
+  
+                    <th scope="col" className="relative px-6 py-3">
+                      <span className="sr-only">Edit</span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white dark:bg-neutral-900 divide-y divide-neutral-200 dark:divide-neutral-800">
+                  {currentCategories.map((item:any, index:any) => {
+                    var href = '/'+authorDetails.username+item.href;
+                    console.log(href);
+                    console.log(index);
+                    return (
+                    <tr key={index}>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center w-96 lg:w-auto max-w-md overflow-hidden">
+                          <NcImage
+                            containerClassName="flex-shrink-0 h-12 w-12 rounded-lg overflow-hidden lg:h-14 lg:w-14"
+                            src={item.featured_imgsd}
+                          />
+                          <Link to={href} className="ml-4 flex-grow">
+                            <h2 className="inline-flex line-clamp-2 text-sm font-semibold  dark:text-neutral-300">
+                              {item.name}
+                            </h2>
+                          </Link>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-500 dark:text-neutral-400">
+                        <span> {item.created_at}</span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium text-neutral-300">
+                        <a
+                          href="/#"
+                          className="text-rose-600 hover:text-rose-900"
+                        >
+                          Delete
+                        </a>
+                      </td>
+                    </tr>
+                  )})}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+  
+        <PostPagination totalPosts={category.length} postsperPage={postsperPage} currentPage={currentPage} setcurrentPage={setcurrentPage} />
+        <Snackbar
+          open={snackStatus}
+          autoHideDuration={snackDuration}
+          message={snackMsg}
+        />
+      </div>
+    );
+
+  }
+};
+
+export default DashboardCategories;
+
+
+
+<p>COURSE NAME</p><p><a id="_mbjsiz6n6jlo"></a><strong>REPORT TITLE</strong></p><p><a id="_vb8p0lepu9vn"></a>LOREM IPSUM DOLOR SIT AMET</p><p><img style={{borderRadius: 20}} src="https://vwporhpsnujzncbdxtaj.supabase.co/storage/v1/object/public/posts/public/report/1.png" alt="horizontal line" /></p><h2><a id="_vydniszftb1n"></a><img style={{borderRadius: 20}} src="https://vwporhpsnujzncbdxtaj.supabase.co/storage/v1/object/public/posts/public/report/2.jpeg" alt="Placeholder image" /></h2><h2><a id="_arolcxe0i15c"></a>Introduction</h2><p>Lorem ipsum dolor sit amet, consectetuer adipiscing elit, sed diam nonummy nibh euismod tincidunt ut laoreet dolore magna aliquam erat volutpat. Ut wisi enim ad minim veniam, quis nostrud exerci tation ullamcorper suscipit lobortis nisl ut aliquip ex ea commodo consequat. Duis autem vel eum iriure dolor in hendrerit in vulputate velit esse molestie consequat, vel illum dolore eu feugiat nulla facilisis at vero eros et accumsan.</p><h2><a id="_la5jp5tnimjw"></a>Lorem ipsum</h2><p>Lorem ipsum dolor sit amet, consectetuer adipiscing elit, sed diam nonummy nibh euismod tincidunt ut laoreet dolore magna aliquam erat volutpat. Ut wisi enim ad minim veniam, quis nostrud exerci tation ullamcorper suscipit lobortis nisl ut aliquip ex ea commodo consequat. Duis autem vel eum iriure dolor in hendrerit in vulputate velit esse molestie consequat, vel illum dolore eu feugiat nulla facilisis at vero eros et accumsan. Nam liber tempor cum soluta nobis eleifend option congue nihil imperdiet doming id quod mazim placerat facer possim assum. Typi non habent claritatem insitam; est usus legentis in iis qui facit eorum claritatem. Investigationes demonstraverunt lectores legere me lius quod ii legunt saepius.</p><p>Lorem ipsum dolor sit amet, consectetuer adipiscing elit, sed diam nonummy nibh euismod tincidunt ut laoreet dolore magna aliquam erat volutpat. Ut wisi enim ad minim veniam, quis nostrud exerci tation ullamcorper suscipit lobortis nisl ut aliquip ex ea commodo consequat.</p><h2><a id="_8xler78hggey"></a><img style={{borderRadius: 20}} src="https://vwporhpsnujzncbdxtaj.supabase.co/storage/v1/object/public/posts/public/report/3.jpeg" alt="Placeholder image" /></h2><h3><a id="_m8iimuc11ozk"></a>Dolor sit amet</h3><p>Nam liber tempor cum soluta nobis eleifend option congue nihil imperdiet doming id quod mazim placerat facer possim assum. Typi non habent claritatem insitam; est usus legentis in iis qui facit eorum claritatem. Investigationes demonstraverunt lectores legere me lius quod ii legunt saepius. Duis autem vel eum iriure dolor in hendrerit in vulputate velit esse molestie consequat, vel illum dolore eu feugiat nulla facilisis at vero eros et accumsan.</p>
+
+[
+    "<img style={{borderRadius: 20}} src=\"https://vwporhpsnujzncbdxtaj.supabase.co/storage/v1/object/public/posts/public/report/1.png\" ",
+    "<img style={{borderRadius: 20}} src=\"https://vwporhpsnujzncbdxtaj.supabase.co/storage/v1/object/public/posts/public/report/2.jpeg\" ",
+    "<img style={{borderRadius: 20}} src=\"https://vwporhpsnujzncbdxtaj.supabase.co/storage/v1/object/public/posts/public/report/3.jpeg\" "
+]
+
+[
+    "public/ab6b81e6-a4a8-43c1-a534-81f0878b2978/testbrochure/1.jpeg",
+    "public/ab6b81e6-a4a8-43c1-a534-81f0878b2978/testbrochure/2.png"
+]
+
+[
+    "public/ab6b81e6-a4a8-43c1-a534-81f0878b2978/testbrochure/1.jpeg",
+    "public/ab6b81e6-a4a8-43c1-a534-81f0878b2978/testbrochure/2.png",
+    "public/ab6b81e6-a4a8-43c1-a534-81f0878b2978/testbrochure/featuredImg/hd.jpeg",
+    "public/ab6b81e6-a4a8-43c1-a534-81f0878b2978/testbrochure/featuredImg/sd.jpeg"
+]
+
+
+
+//index.tsx
+
+import React, { useState, useEffect } from "react";
+import { BrowserRouter, Switch, Route } from "react-router-dom";
+import { Page } from "./types";
+import ScrollToTop from "./ScrollToTop";
+import Footer from "components/Footer/Footer";
+import SubFooter from "components/Footer/SubFooter";
+import Page404 from "containers/Page404/Page404";
+import PageArchive from "containers/PageArchive/PageArchive";
+import PageAuthor from "containers/PageAuthor/PageAuthor";
+import PageSearch from "containers/PageSearch/PageSearch";
+import PageSingle from "containers/PageSingle/PageSingle";
+import PageSingleHasSidebar from "containers/PageSingle/PageSingleHasSidebar";
+import PageSingleTemplate2 from "containers/PageSingle/PageSingleTemp2";
+import PageSingleTemp2Sidebar from "containers/PageSingle/PageSingleTemp2Sidebar";
+import PageSingleTemplate3 from "containers/PageSingle/PageSingleTemp3";
+import PageSingleTemp3Sidebar from "containers/PageSingle/PageSingleTemp3Sidebar";
+import PageAbout from "containers/PageAbout/PageAbout";
+import PageContact from "containers/PageContact/PageContact";
+import PageLogin from "containers/PageLogin/PageLogin";
+import PageSignUp from "containers/PageSignUp/PageSignUp";
+import PageForgotPass from "containers/PageForgotPass/PageForgotPass";
+import PageDashboard from "containers/PageDashboard/PageDashboard";
+import PageSubcription from "containers/PageSubcription/PageSubcription";
+import HeaderContainer from "containers/HeaderContainer/HeaderContainer";
+import SubHeaderContainer from "containers/HeaderContainer/SubHeaderContainer";
+import PageHome from "containers/PageHome/PageHome";
+import PageHomeDemo2 from "containers/PageHome/PageHomeDemo2";
+import PageHomeDemo3 from "containers/PageHome/PageHomeDemo3";
+import PageAuthorV2 from "containers/PageAuthor/PageAuthorV2";
+import PageHomeDemo4 from "containers/PageHome/PageHomeDemo4";
+import PageSearchV2 from "containers/PageSearch/PageSearchV2";
+import PageSingleGallery from "containers/PageSingleGallery/PageSingleGallery";
+import PageSingleAudio from "containers/PageSingleAudio/PageSingleAudio";
+import PageSingleVideo from "containers/PageSingleVideo/PageSingleVideo";
+import PageArchiveVideo from "containers/PageArchive/PageArchiveVideo";
+import PageArchiveAudio from "containers/PageArchive/PageArchiveAudio";
+import PageHomeDemo5 from "containers/PageHome/PageHomeDemo5";
+import PageHomeDemo6 from "containers/PageHome/PageHomeDemo6";
+import PageHomeDemo7 from "containers/PageHome/PageHomeDemo7";
+import PageSingleTemp4Sidebar from "containers/PageSingle/PageSingleTemp4Sidebar";
+import MediaRunningContainer from "containers/MediaRunningContainer/MediaRunningContainer";
+import { MyGlobalContext } from "utils/context"; 
+import { useParams } from "react-router-dom";
+
+import supabaseClient from "utils/supabaseClient";
+
+export const subDomainPages: Page[] = [
+  { path: "/", exact: true, component: PageHome },
+  { path: "/#", exact: true, component: PageHome },
+  { path: "/:authorslug", exact: true, component: PageHome },
+  //
+  { path: "/home-header-style1", exact: true, component: PageHome },
+  { path: "/home-header-style2", exact: true, component: PageHome },
+  { path: "/home-header-style2-logedin", exact: true, component: PageHome },
+  //
+  { path: "/archive/:slug", component: PageArchive },
+  { path: "/archive-video/:slug", component: PageArchiveVideo },
+  { path: "/archive-audio/:slug", component: PageArchiveAudio },
+  //
+  { path: "/author/:slug", component: PageAuthor },
+  { path: "/author-v2/:slug", component: PageAuthorV2 },
+  //
+  { path: "/single/:slug", component: PageSingleTemp3Sidebar },
+  {
+    path: "/single-sidebar/:slug",
+    component: PageSingleTemplate3,
+  },
+  {
+    path: "/single-template-2/:slug",
+    component: PageSingleTemplate2,
+  },
+  {
+    path: "/single-2-sidebar/:slug",
+    component: PageSingleTemp2Sidebar,
+  },
+  {
+    path: "/single-template-3/:slug",
+    component: PageSingle,
+  },
+  {
+    path: "/single-3-sidebar/:slug",
+    component: PageSingleHasSidebar,
+  },
+  {
+    path: "/single-4-sidebar/:slug",
+    component: PageSingleTemp4Sidebar,
+  },
+  {
+    path: "/posts/:postslug",
+    component: PageSingle,
+  },
+  {
+    path: "/category/:categoryslug",
+    component: PageArchive,
+  },
+  {
+    path: "/single-gallery/:slug",
+    component: PageSingleGallery,
+  },
+  {
+    path: "/single-audio/:slug",
+    component: PageSingleAudio,
+  },
+  {
+    path: "/single-video/:slug",
+    component: PageSingleVideo,
+  },
+
+  { path: "/search", component: PageSearch },
+  { path: "/search-v2", component: PageSearchV2 },
+  { path: "/about", component: PageAbout },
+  { path: "/contact", component: PageContact },
+  { path: "/page404", component: Page404 },
+  { path: "/login", component: PageLogin },
+  { path: "/signup", component: PageSignUp },
+  { path: "/forgot-pass", component: PageForgotPass },
+  { path: "/dashboard", component: PageDashboard },
+  { path: "/subscription", component: PageSubcription },
+  //
+  { path: "/home-demo-2", component: PageHomeDemo2 },
+  { path: "/home-demo-3", component: PageHomeDemo3 },
+  { path: "/home-demo-4", component: PageHomeDemo4 },
+  { path: "/home-demo-5", component: PageHomeDemo5 },
+  { path: "/home-demo-6", component: PageHomeDemo6 },
+  { path: "/home-demo-7", component: PageHomeDemo7 },
+  //
+];
+
+export const mainPages: Page[] = [
+  { path: "/", exact: true, component: PageHomeDemo2 },
+  { path: "/#", exact: true, component: PageHomeDemo2 },
+  //
+  { path: "/home-header-style1", exact: true, component: PageHome },
+  { path: "/home-header-style2", exact: true, component: PageHome },
+  { path: "/home-header-style2-logedin", exact: true, component: PageHome },
+  //
+  { path: "/archive/:slug", component: PageArchive },
+  { path: "/archive-video/:slug", component: PageArchiveVideo },
+  { path: "/archive-audio/:slug", component: PageArchiveAudio },
+  //
+  { path: "/author/:slug", component: PageAuthor },
+  { path: "/author-v2/:slug", component: PageAuthorV2 },
+  //
+  { path: "/single/:slug", component: PageSingleTemp3Sidebar },
+  {
+    path: "/single-sidebar/:slug",
+    component: PageSingleTemplate3,
+  },
+  {
+    path: "/single-template-2/:slug",
+    component: PageSingleTemplate2,
+  },
+  {
+    path: "/single-2-sidebar/:slug",
+    component: PageSingleTemp2Sidebar,
+  },
+  {
+    path: "/single-template-3/:slug",
+    component: PageSingle,
+  },
+  {
+    path: "/single-3-sidebar/:slug",
+    component: PageSingleHasSidebar,
+  },
+  {
+    path: "/single-4-sidebar/:slug",
+    component: PageSingleTemp4Sidebar,
+  },
+  {
+    path: "/:authorslug/posts/:postslug",
+    component: PageSingle,
+  },
+  {
+    path: "/:authorslug/category/:categoryslug",
+    component: PageArchive,
+  },
+  {
+    path: "/single-gallery/:slug",
+    component: PageSingleGallery,
+  },
+  {
+    path: "/single-audio/:slug",
+    component: PageSingleAudio,
+  },
+  {
+    path: "/single-video/:slug",
+    component: PageSingleVideo,
+  },
+
+  { path: "/search", component: PageSearch },
+  { path: "/search-v2", component: PageSearchV2 },
+  { path: "/about", component: PageAbout },
+  { path: "/contact", component: PageContact },
+  { path: "/page404", component: Page404 },
+  { path: "/login", component: PageLogin },
+  { path: "/signup", component: PageSignUp },
+  { path: "/forgot-pass", component: PageForgotPass },
+  { path: "/dashboard", component: PageDashboard },
+  { path: "/subscription", component: PageSubcription },
+  //
+  { path: "/home-demo-2", component: PageHomeDemo2 },
+  { path: "/home-demo-3", component: PageHomeDemo3 },
+  { path: "/home-demo-4", component: PageHomeDemo4 },
+  { path: "/home-demo-5", component: PageHomeDemo5 },
+  { path: "/home-demo-6", component: PageHomeDemo6 },
+  { path: "/home-demo-7", component: PageHomeDemo7 },
+  //
+];
+
+export const SubDomainRoutes = () => {
+  const [user, setUser] = useState<any>(null);
+  const [event, setEvent] = useState<any>(null);
+  const [loading, setLoading] = useState<any>(true);
+  const [author, setAuthor] = useState<any>();
+  const [navigation, setNavigation] = useState<any>();
+  const [post, setPost] = useState<any>();
+  const [error, setError] = useState<any>();
+  const location = window.location.hostname.split(".")[0];
+  const url = import.meta.env.VITE_URL;
+
+ 
+  const initpostRange = 0, finpostRange = 10;
+
+  const getAuthorSlug = () => {
+    const { authorslug } = useParams<any>();
+    return authorslug;
+  }
+ // const authUser = supabaseClient.auth.user();
+ const supabaseFetch = async (table: any, query: any, type: any) => {
+  const { data, error } = await supabaseClient
+    .from(table)
+    .select(query)
+    .eq(type, location);
+
+    if(error) {
+      throw setError(error);
+    }
+    return data;
+ } 
+
+ const authorSlug = location != url ? location : getAuthorSlug();
+
+  useEffect(() => {
+    const fetchPost = async() => {
+      // var posts:any = await supabaseFetch('posts', 'title, created_at, featured_imghd, href, authors!inner(*), category!inner(*)', 'authors.username');
+      var posts:any = await supabaseClient
+      .from('posts')
+      .select('title, created_at, featured_imghd, href, authors!inner(*), category!inner(*)')
+      .eq('authors.username', authorSlug)
+      .range(initpostRange, finpostRange);
+
+      if(posts.error) {
+        throw setError(error.message);
+      }
+      var nav:any = await supabaseFetch('navigation', '*, authors!inner(*)', 'authors.username');
+
+      // const posts = await supabaseClient
+      //   .from('posts')
+      //   .select(`*, authors!inner(*)`)
+      //   .eq('authors.username', location)
+
+      // const navigation = await supabaseClient
+      //   .from('posts')
+      //   .select(`*, authors!inner(*)`)
+      //   .eq('authors.username', location)
+
+      if(posts.data.length == 0) {
+        const authors:any =  await supabaseFetch('authors', '*', 'username');
+        // const { data, error } = await supabaseClient
+        //   .from('authors')
+        //   .select(`*`)
+        //   .eq('username', location);
+
+          if(authors) {
+            setAuthor(authors);
+            setNavigation(nav);
+            //console.log(authors);
+            setLoading(false);
+          }
+        
+      }else if(posts.data && nav) {
+        setPost(posts.data);
+        setAuthor([posts.data[0].authors]);
+        setNavigation(nav);
+        console.log(posts);
+        console.log(nav);
+        setLoading(false);
+      }
+    }
+    
+    fetchPost();
+    
+    //setLoading(false);
+  }, []);
+
+  if(error) {
+
+    return (
+      <>
+        <div
+          className={`nc-PageSingleTemp4Sidebar relative text-center pt-10 lg:pt-16`}
+          data-nc-id="PageSingleTemp4Sidebar"
+        >
+          {/*  */}
+          
+            <div className="container relative py-16 lg:py-20">
+              {/* HEADER */}
+              <header className="text-center max-w-2xl mx-auto space-y-7">
+                <h2 className="text-7xl md:text-8xl"></h2>
+                <h1 className="text-8xl md:text-9xl font-semibold tracking-widest">
+                  ERROR
+                </h1>
+                <span className="block text-sm text-neutral-800 sm:text-base dark:text-neutral-200 tracking-wider font-medium">
+                  Please check your internet connection & refresh the page
+                </span>
+              </header>
+            </div>
+        </div>
+      </>
+    );
+
+  }else if(loading == true) {
+    return (
+      <div
+        className={`nc-PageSingleTemp4Sidebar relative text-center pt-10 lg:pt-16`}
+        data-nc-id="PageSingleTemp4Sidebar"
+      >
+        {/*  */}
+        
+        <div className="container relative py-16 lg:py-20">
+          {/* HEADER */}
+          <header className="text-center max-w-2xl mx-auto space-y-7">
+            <h2 className="text-7xl md:text-8xl"></h2>
+            <h1 className="text-6xl md:text-6xl font-semibold tracking-widest">
+              LOADING....
+            </h1>
+            <span className="block text-sm text-neutral-800 sm:text-base dark:text-neutral-200 tracking-wider font-medium">
+            </span>
+          </header>
+        </div>
+      </div>
+    )
+  }else if(author.length == 0) {
+
+    return (
+      <>
+        <div
+          className={`nc-PageSingleTemp4Sidebar relative text-center pt-10 lg:pt-16`}
+          data-nc-id="PageSingleTemp4Sidebar"
+        >
+          {/*  */}
+          
+            <div className="container relative py-16 lg:py-20">
+              {/* HEADER */}
+              <header className="text-center max-w-2xl mx-auto space-y-7">
+                <h2 className="text-7xl md:text-8xl">🪔</h2>
+                <h1 className="text-8xl md:text-9xl font-semibold tracking-widest">
+                  404
+                </h1>
+                <span className="block text-sm text-neutral-800 sm:text-base dark:text-neutral-200 tracking-wider font-medium">
+                  THE BLOG YOU WERE LOOKING FOR DOESN'T EXIST.{" "}
+                </span>
+              </header>
+            </div>
+        </div>
+      </>
+    );
+
+  }else {
+    
+    return (
+      <>
+      <MyGlobalContext.Provider value={{ author, setAuthor, post, setPost, navigation, setNavigation, initpostRange, finpostRange }}>
+        <BrowserRouter
+          basename={
+            import.meta.env.VITE_LRT_OR_RTL === "rtl" ? "/" : "/"
+          }
+        >
+          <MediaRunningContainer />
+
+          <ScrollToTop />
+          <SubHeaderContainer />
+          <Switch>
+            {subDomainPages.map(({ component, path, exact }) => {
+              return (
+                <Route
+                  key={path}
+                  component={component}
+                  exact={!!exact}
+                  path={path}
+                />
+              );
+            })}
+            <Route component={Page404} />
+          </Switch>
+          <div className="hidden xl:block">
+            <SubFooter username={author[0].username} logo={author[0].logoimg} menus={navigation} />
+          </div>
+          {/* MEDIA */}
+        </BrowserRouter>
+
+      </MyGlobalContext.Provider>
+      </>
+    );
+  }
+};
+
+export const MainRoute = () => {
+  const [user, setUser] = useState<any>(null);
+  const [event, setEvent] = useState<any>(null);
+  const [loading, setLoading] = useState<any>(false);
+
+ // const authUser = supabaseClient.auth.user();
+  
+  useEffect(() => {
+    //setLoading(true);
+    checkUser();
+    
+    //setLoading(false);
+  }, []);
+
+  async function checkUser() {
+    /* when the component loads, checks user to show or hide Sign In link */
+    setUser(await supabaseClient.auth.user());
+  }
+  
+  // useEffect(() => {
+  //   supabaseClient.auth.onAuthStateChange((event) => {
+  //     setEvent(event);
+  //     setLoading(false);
+  //   })
+  // }, []);
+
+  if(loading == true) {
+    return (
+      <div>
+        Loading....
+      </div>
+    )
+  }else {
+    
+    return (
+      <>
+        <BrowserRouter
+          basename={
+            import.meta.env.VITE_LRT_OR_RTL === "rtl" ? "/" : "/"
+          }
+        >
+          <MediaRunningContainer />
+
+          <ScrollToTop />
+          <HeaderContainer />
+          <Switch>
+            {mainPages.map(({ component, path, exact }) => {
+              return (
+                <Route
+                  key={path}
+                  component={component}
+                  exact={!!exact}
+                  path={path}
+                />
+              );
+            })}
+            <Route component={Page404} />
+          </Switch>
+          <Footer />
+          {/* MEDIA */}
+        </BrowserRouter>
+      </>
+    );
+  }
+};
